@@ -9,7 +9,7 @@ void initRandom() { std::srand(static_cast<unsigned int>(std::time(nullptr))); }
 EMSCRIPTEN_KEEPALIVE
 int addPoint(int currentScore) {
     int bonus = 0;
-    if (std::rand() % 100 < 20) bonus = 2; // 20% chance de bônus
+    if(std::rand() % 100 < 20) bonus = 2; // 20% chance bônus
     return currentScore + 1 + bonus;
 }
 
