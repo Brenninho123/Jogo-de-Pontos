@@ -14,6 +14,7 @@
             background: linear-gradient(135deg, #1e1e2f, #3a3a5c);
             color: #fff;
             font-family: 'Arial', sans-serif;
+            overflow: hidden;
         }
 
         h1 {
@@ -21,9 +22,9 @@
             margin-bottom: 30px;
         }
 
-        #score {
+        #score, #record {
             font-size: 2.5rem;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
 
         button {
@@ -47,35 +48,82 @@
             margin-bottom: 15px;
             color: #ddd;
         }
+
+        /* Animação bônus */
+        .bonus {
+            position: absolute;
+            font-size: 2rem;
+            color: gold;
+            animation: floatUp 1s ease-out forwards;
+            pointer-events: none;
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0px); }
+            100% { opacity: 0; transform: translateY(-50px); }
+        }
     </style>
 </head>
 <body>
     <h1>Jogo de Pontos</h1>
     <div id="loader">Carregando módulo C++...</div>
     <div id="score">Pontuação: 0</div>
+    <div id="record">Recorde: 0</div>
     <button id="addBtn">Adicionar Ponto</button>
     <button id="resetBtn">Resetar</button>
 
-    <!-- Importa o módulo C++ compilado para WebAssembly -->
+    <!-- Sons -->
+    <audio id="clickSound" src="click.mp3"></audio>
+    <audio id="bonusSound" src="bonus.mp3"></audio>
+
+    <!-- Módulo C++ -->
     <script src="game.js"></script>
 
     <script>
         let score = 0;
+        let record = 0;
 
-        // Desabilitar botões até o módulo estar carregado
         document.getElementById('addBtn').disabled = true;
         document.getElementById('resetBtn').disabled = true;
 
-        // Atualiza o display da pontuação
+        const scoreEl = document.getElementById('score');
+        const recordEl = document.getElementById('record');
+        const clickSound = document.getElementById('clickSound');
+        const bonusSound = document.getElementById('bonusSound');
+
         function updateScore() {
-            document.getElementById('score').innerText = `Pontuação: ${score}`;
+            scoreEl.innerText = `Pontuação: ${score}`;
+            if(score > record) {
+                record = score;
+                recordEl.innerText = `Recorde: ${record}`;
+            }
         }
 
-        // Chamadas para funções C++ via WebAssembly
+        function showBonus(x, y) {
+            const bonusEl = document.createElement('div');
+            bonusEl.classList.add('bonus');
+            bonusEl.innerText = '+2!';
+            bonusEl.style.left = x + 'px';
+            bonusEl.style.top = y + 'px';
+            document.body.appendChild(bonusEl);
+            setTimeout(() => bonusEl.remove(), 1000);
+        }
+
         function addPoint() {
             if (typeof Module !== 'undefined') {
+                const prevScore = score;
                 score = Module.ccall('addPoint', 'number', ['number'], [score]);
                 updateScore();
+                clickSound.currentTime = 0;
+                clickSound.play();
+
+                // Se ganhou bônus
+                if(score - prevScore > 1) {
+                    bonusSound.currentTime = 0;
+                    bonusSound.play();
+                    // Posição aleatória para animação
+                    showBonus(Math.random() * window.innerWidth * 0.8, Math.random() * window.innerHeight * 0.6);
+                }
             }
         }
 
@@ -86,15 +134,14 @@
             }
         }
 
-        // Inicializa depois que o módulo WebAssembly estiver pronto
+        // Espera o módulo WebAssembly carregar
         var checkModule = setInterval(() => {
-            if (typeof Module !== 'undefined' && Module.calledRun) {
+            if(typeof Module !== 'undefined' && Module.calledRun) {
                 clearInterval(checkModule);
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('addBtn').disabled = false;
                 document.getElementById('resetBtn').disabled = false;
-
-                // Conecta os botões
+                Module.ccall('initRandom', 'void', [], []);
                 document.getElementById('addBtn').onclick = addPoint;
                 document.getElementById('resetBtn').onclick = resetScore;
             }
