@@ -2,69 +2,24 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Jogo de Pontos Dinâmico</title>
+<title>Jogo de Pontos Full</title>
 <style>
-    html, body {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        height: 100%;
-        font-family: 'Arial', sans-serif;
-    }
-
-    body {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, #1e1e2f, #3a3a5c);
-        color: #fff;
-        transition: background 1s ease;
-    }
-
-    h1 { font-size: 3rem; margin-bottom: 20px; }
-
-    #score, #record, #level { font-size: 2rem; margin: 5px; }
-
-    button {
-        padding: 12px 25px;
-        font-size: 1.2rem;
-        margin: 5px;
-        border: none;
-        border-radius: 12px;
-        cursor: pointer;
-        background: #ff6b6b;
-        color: white;
-        box-shadow: 0 4px #c74444;
-        transition: 0.2s;
-    }
-
-    button:active {
-        transform: translateY(2px);
-        box-shadow: 0 2px #c74444;
-    }
-
-    button:hover { background: #ff8787; }
-
-    #loader { font-size: 1.2rem; margin-bottom: 15px; color: #ddd; }
-
-    .particle {
-        position: absolute;
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        pointer-events: none;
-        animation: particleMove 0.8s forwards;
-    }
-
-    @keyframes particleMove {
-        0% { opacity: 1; transform: translate(0,0) scale(1); }
-        100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0); }
-    }
+html, body { margin:0; padding:0; overflow:hidden; height:100%; font-family:Arial; }
+body { display:flex; flex-direction:column; align-items:center; justify-content:center;
+       background:linear-gradient(135deg,#1e1e2f,#3a3a5c); color:#fff; transition:background 1s;}
+h1 { font-size:3rem; margin-bottom:20px; }
+#score, #record, #level { font-size:2rem; margin:5px; }
+button { padding:12px 25px; margin:5px; font-size:1.2rem; border:none; border-radius:12px;
+         cursor:pointer; background:#ff6b6b; color:white; box-shadow:0 4px #c74444; transition:0.2s;}
+button:active { transform:translateY(2px); box-shadow:0 2px #c74444;}
+button:hover { background:#ff8787; }
+#loader { font-size:1.2rem; margin-bottom:15px; color:#ddd; }
+.particle { position:absolute; width:6px; height:6px; border-radius:50%; pointer-events:none; animation:particleMove 0.8s forwards; }
+@keyframes particleMove { 0% { opacity:1; transform:translate(0,0) scale(1);} 100% { opacity:0; transform:translate(var(--dx), var(--dy)) scale(0); } }
 </style>
 </head>
 <body>
-<h1>Jogo de Pontos</h1>
+<h1>Jogo de Pontos Full</h1>
 <div id="loader">Carregando módulo C++...</div>
 <div id="score">Pontuação: 0</div>
 <div id="record">Recorde: 0</div>
@@ -72,117 +27,68 @@
 <button id="addBtn">Adicionar Ponto</button>
 <button id="resetBtn">Resetar</button>
 
-<!-- Sons -->
 <audio id="clickSound" src="click.mp3"></audio>
 <audio id="bonusSound" src="bonus.mp3"></audio>
 <audio id="levelUpSound" src="levelup.mp3"></audio>
 
-<!-- C++ WebAssembly -->
+<!-- Importa módulo C++ -->
 <script src="game.js"></script>
-
 <script>
-let score = 0;
-let level = 1;
+let score = 0, level = 1;
 let record = localStorage.getItem('record') ? parseInt(localStorage.getItem('record')) : 0;
+const scoreEl=document.getElementById('score'), recordEl=document.getElementById('record'), levelEl=document.getElementById('level');
+const clickSound=document.getElementById('clickSound'), bonusSound=document.getElementById('bonusSound'), levelUpSound=document.getElementById('levelUpSound');
 
-const scoreEl = document.getElementById('score');
-const recordEl = document.getElementById('record');
-const levelEl = document.getElementById('level');
-const clickSound = document.getElementById('clickSound');
-const bonusSound = document.getElementById('bonusSound');
-const levelUpSound = document.getElementById('levelUpSound');
+scoreEl.innerText=`Pontuação: ${score}`;
+recordEl.innerText=`Recorde: ${record}`;
+levelEl.innerText=`Nível: ${level}`;
 
-scoreEl.innerText = `Pontuação: ${score}`;
-recordEl.innerText = `Recorde: ${record}`;
-levelEl.innerText = `Nível: ${level}`;
+document.getElementById('addBtn').disabled=true;
+document.getElementById('resetBtn').disabled=true;
 
-document.getElementById('addBtn').disabled = true;
-document.getElementById('resetBtn').disabled = true;
-
-// Atualiza pontuação, recorde e nível
 function updateScore() {
-    scoreEl.innerText = `Pontuação: ${score}`;
-    if(score > record) {
-        record = score;
-        recordEl.innerText = `Recorde: ${record}`;
-        localStorage.setItem('record', record);
-    }
-
-    let newLevel = Math.floor(score / 10) + 1;
-    if(newLevel > level) {
-        level = newLevel;
-        levelEl.innerText = `Nível: ${level}`;
-        changeBackground();
-        levelUpSound.currentTime = 0;
-        levelUpSound.play();
-    }
+    scoreEl.innerText=`Pontuação: ${score}`;
+    if(score>record){ record=score; recordEl.innerText=`Recorde: ${record}`; localStorage.setItem('record',record);}
+    let newLevel=Math.floor(score/10)+1;
+    if(newLevel>level){ level=newLevel; levelEl.innerText=`Nível: ${level}`; changeBackground(); levelUpSound.currentTime=0; levelUpSound.play();}
 }
 
-// Mudança de cores de fundo por nível
-function changeBackground() {
-    const colors = [
-        '#1e1e2f', '#3a3a5c', '#1f3a3a', '#5c3a3a',
-        '#3a1e5c', '#5c5c1e', '#1e5c5c'
-    ];
-    const color = colors[level % colors.length];
-    document.body.style.background = `linear-gradient(135deg, ${color}, #000)`;
+function changeBackground(){
+    const colors=['#1e1e2f','#3a3a5c','#1f3a3a','#5c3a3a','#3a1e5c','#5c5c1e','#1e5c5c'];
+    document.body.style.background=`linear-gradient(135deg, ${colors[level % colors.length]}, #000)`;
 }
 
-// Cria partículas bônus
-function createParticles(x, y, count = 15) {
-    for(let i=0; i<count; i++){
-        const p = document.createElement('div');
-        p.className = 'particle';
-        const dx = (Math.random()*100 - 50) + 'px';
-        const dy = (Math.random()*-100 - 50) + 'px';
-        p.style.left = x + 'px';
-        p.style.top = y + 'px';
-        p.style.background = `hsl(${Math.random()*360}, 100%, 50%)`;
-        p.style.setProperty('--dx', dx);
-        p.style.setProperty('--dy', dy);
-        document.body.appendChild(p);
-        setTimeout(()=>p.remove(), 800);
+function createParticles(x,y,count=20){
+    for(let i=0;i<count;i++){
+        const p=document.createElement('div'); p.className='particle';
+        const dx=(Math.random()*100-50)+'px', dy=(Math.random()*-100-50)+'px';
+        p.style.left=x+'px'; p.style.top=y+'px'; p.style.background=`hsl(${Math.random()*360},100%,50%)`;
+        p.style.setProperty('--dx',dx); p.style.setProperty('--dy',dy);
+        document.body.appendChild(p); setTimeout(()=>p.remove(),800);
     }
 }
 
-// Adicionar ponto
-function addPoint() {
-    if(typeof Module !== 'undefined') {
-        const prevScore = score;
-        score = Module.ccall('addPoint','number',['number'],[score]);
+// Carrega módulo C++ como promessa
+GameModule().then(Module=>{
+    document.getElementById('loader').style.display='none';
+    document.getElementById('addBtn').disabled=false;
+    document.getElementById('resetBtn').disabled=false;
+    Module.ccall('initRandom','void',[],[]);
+
+    document.getElementById('addBtn').onclick=()=>{
+        const prevScore=score;
+        score=Module.ccall('addPoint','number',['number'],[score]);
         updateScore();
-        clickSound.currentTime = 0;
-        clickSound.play();
+        clickSound.currentTime=0; clickSound.play();
+        if(score-prevScore>1){ bonusSound.currentTime=0; bonusSound.play(); createParticles(window.innerWidth/2,window.innerHeight/2,20);}
+    };
 
-        if(score - prevScore > 1) { // ganhou bônus
-            bonusSound.currentTime = 0;
-            bonusSound.play();
-            createParticles(window.innerWidth/2, window.innerHeight/2, 20);
-        }
-    }
-}
-
-// Resetar
-function resetScore() {
-    if(typeof Module !== 'undefined') {
-        score = Module.ccall('resetPoints','number',[],[]);
-        level = 1;
+    document.getElementById('resetBtn').onclick=()=>{
+        score=Module.ccall('resetPoints','number',[],[]);
+        level=1;
         updateScore();
-    }
-}
-
-// Espera WebAssembly carregar
-let checkModule = setInterval(()=>{
-    if(typeof Module !== 'undefined' && Module.calledRun){
-        clearInterval(checkModule);
-        document.getElementById('loader').style.display = 'none';
-        document.getElementById('addBtn').disabled = false;
-        document.getElementById('resetBtn').disabled = false;
-        Module.ccall('initRandom','void',[],[]);
-        document.getElementById('addBtn').onclick = addPoint;
-        document.getElementById('resetBtn').onclick = resetScore;
-    }
-},100);
+    };
+});
 </script>
 </body>
 </html>
