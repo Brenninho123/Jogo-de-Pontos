@@ -4,17 +4,101 @@
     <meta charset="UTF-8">
     <title>Jogo de Pontos</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align:center; background: #222; color: #fff; }
-        #score { font-size: 2rem; margin: 20px; }
-        button { padding: 10px 20px; font-size: 1rem; margin: 5px; }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #1e1e2f, #3a3a5c);
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 30px;
+        }
+
+        #score {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 12px 25px;
+            font-size: 1.2rem;
+            margin: 5px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            background-color: #ff6b6b;
+            color: white;
+        }
+
+        button:hover {
+            background-color: #ff8787;
+        }
+
+        #loader {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #ddd;
+        }
     </style>
 </head>
 <body>
     <h1>Jogo de Pontos</h1>
+    <div id="loader">Carregando módulo C++...</div>
     <div id="score">Pontuação: 0</div>
-    <button onclick="addPoint()">Adicionar Ponto</button>
-    <button onclick="resetPoints()">Resetar</button>
+    <button id="addBtn">Adicionar Ponto</button>
+    <button id="resetBtn">Resetar</button>
 
+    <!-- Importa o módulo C++ compilado para WebAssembly -->
     <script src="game.js"></script>
+
+    <script>
+        let score = 0;
+
+        // Desabilitar botões até o módulo estar carregado
+        document.getElementById('addBtn').disabled = true;
+        document.getElementById('resetBtn').disabled = true;
+
+        // Atualiza o display da pontuação
+        function updateScore() {
+            document.getElementById('score').innerText = `Pontuação: ${score}`;
+        }
+
+        // Chamadas para funções C++ via WebAssembly
+        function addPoint() {
+            if (typeof Module !== 'undefined') {
+                score = Module.ccall('addPoint', 'number', ['number'], [score]);
+                updateScore();
+            }
+        }
+
+        function resetScore() {
+            if (typeof Module !== 'undefined') {
+                score = Module.ccall('resetPoints', 'number', [], []);
+                updateScore();
+            }
+        }
+
+        // Inicializa depois que o módulo WebAssembly estiver pronto
+        var checkModule = setInterval(() => {
+            if (typeof Module !== 'undefined' && Module.calledRun) {
+                clearInterval(checkModule);
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('addBtn').disabled = false;
+                document.getElementById('resetBtn').disabled = false;
+
+                // Conecta os botões
+                document.getElementById('addBtn').onclick = addPoint;
+                document.getElementById('resetBtn').onclick = resetScore;
+            }
+        }, 100);
+    </script>
 </body>
 </html>
