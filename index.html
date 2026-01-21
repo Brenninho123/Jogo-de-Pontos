@@ -2,24 +2,29 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Jogo de Pontos Avançado</title>
+<title>Jogo de Pontos Dinâmico</title>
 <style>
-    body {
+    html, body {
         margin: 0;
-        height: 100vh;
-        background: linear-gradient(135deg, #1e1e2f, #3a3a5c);
+        padding: 0;
+        overflow: hidden;
+        height: 100%;
         font-family: 'Arial', sans-serif;
+    }
+
+    body {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        overflow: hidden;
+        background: linear-gradient(135deg, #1e1e2f, #3a3a5c);
         color: #fff;
+        transition: background 1s ease;
     }
 
-    h1 { font-size: 3rem; margin-bottom: 30px; }
+    h1 { font-size: 3rem; margin-bottom: 20px; }
 
-    #score, #record { font-size: 2.5rem; margin: 5px; }
+    #score, #record, #level { font-size: 2rem; margin: 5px; }
 
     button {
         padding: 12px 25px;
@@ -43,12 +48,10 @@
 
     #loader { font-size: 1.2rem; margin-bottom: 15px; color: #ddd; }
 
-    /* Partículas bônus */
     .particle {
         position: absolute;
         width: 6px;
         height: 6px;
-        background: gold;
         border-radius: 50%;
         pointer-events: none;
         animation: particleMove 0.8s forwards;
@@ -61,34 +64,42 @@
 </style>
 </head>
 <body>
-<h1>Jogo de Pontos Avançado</h1>
+<h1>Jogo de Pontos</h1>
 <div id="loader">Carregando módulo C++...</div>
 <div id="score">Pontuação: 0</div>
 <div id="record">Recorde: 0</div>
+<div id="level">Nível: 1</div>
 <button id="addBtn">Adicionar Ponto</button>
 <button id="resetBtn">Resetar</button>
 
+<!-- Sons -->
 <audio id="clickSound" src="click.mp3"></audio>
 <audio id="bonusSound" src="bonus.mp3"></audio>
+<audio id="levelUpSound" src="levelup.mp3"></audio>
 
+<!-- C++ WebAssembly -->
 <script src="game.js"></script>
 
 <script>
 let score = 0;
+let level = 1;
 let record = localStorage.getItem('record') ? parseInt(localStorage.getItem('record')) : 0;
 
 const scoreEl = document.getElementById('score');
 const recordEl = document.getElementById('record');
+const levelEl = document.getElementById('level');
 const clickSound = document.getElementById('clickSound');
 const bonusSound = document.getElementById('bonusSound');
+const levelUpSound = document.getElementById('levelUpSound');
 
 scoreEl.innerText = `Pontuação: ${score}`;
 recordEl.innerText = `Recorde: ${record}`;
+levelEl.innerText = `Nível: ${level}`;
 
 document.getElementById('addBtn').disabled = true;
 document.getElementById('resetBtn').disabled = true;
 
-// Atualiza a pontuação e recorde
+// Atualiza pontuação, recorde e nível
 function updateScore() {
     scoreEl.innerText = `Pontuação: ${score}`;
     if(score > record) {
@@ -96,10 +107,29 @@ function updateScore() {
         recordEl.innerText = `Recorde: ${record}`;
         localStorage.setItem('record', record);
     }
+
+    let newLevel = Math.floor(score / 10) + 1;
+    if(newLevel > level) {
+        level = newLevel;
+        levelEl.innerText = `Nível: ${level}`;
+        changeBackground();
+        levelUpSound.currentTime = 0;
+        levelUpSound.play();
+    }
+}
+
+// Mudança de cores de fundo por nível
+function changeBackground() {
+    const colors = [
+        '#1e1e2f', '#3a3a5c', '#1f3a3a', '#5c3a3a',
+        '#3a1e5c', '#5c5c1e', '#1e5c5c'
+    ];
+    const color = colors[level % colors.length];
+    document.body.style.background = `linear-gradient(135deg, ${color}, #000)`;
 }
 
 // Cria partículas bônus
-function createParticles(x, y, count = 10) {
+function createParticles(x, y, count = 15) {
     for(let i=0; i<count; i++){
         const p = document.createElement('div');
         p.className = 'particle';
@@ -107,6 +137,7 @@ function createParticles(x, y, count = 10) {
         const dy = (Math.random()*-100 - 50) + 'px';
         p.style.left = x + 'px';
         p.style.top = y + 'px';
+        p.style.background = `hsl(${Math.random()*360}, 100%, 50%)`;
         p.style.setProperty('--dx', dx);
         p.style.setProperty('--dy', dy);
         document.body.appendChild(p);
@@ -114,11 +145,11 @@ function createParticles(x, y, count = 10) {
     }
 }
 
-// Função adicionar ponto
+// Adicionar ponto
 function addPoint() {
     if(typeof Module !== 'undefined') {
         const prevScore = score;
-        score = Module.ccall('addPoint', 'number', ['number'], [score]);
+        score = Module.ccall('addPoint','number',['number'],[score]);
         updateScore();
         clickSound.currentTime = 0;
         clickSound.play();
@@ -126,22 +157,23 @@ function addPoint() {
         if(score - prevScore > 1) { // ganhou bônus
             bonusSound.currentTime = 0;
             bonusSound.play();
-            createParticles(window.innerWidth/2, window.innerHeight/2, 15);
+            createParticles(window.innerWidth/2, window.innerHeight/2, 20);
         }
     }
 }
 
-// Resetar pontuação
+// Resetar
 function resetScore() {
     if(typeof Module !== 'undefined') {
-        score = Module.ccall('resetPoints', 'number', [], []);
+        score = Module.ccall('resetPoints','number',[],[]);
+        level = 1;
         updateScore();
     }
 }
 
 // Espera WebAssembly carregar
-var checkModule = setInterval(()=>{
-    if(typeof Module !== 'undefined' && Module.calledRun) {
+let checkModule = setInterval(()=>{
+    if(typeof Module !== 'undefined' && Module.calledRun){
         clearInterval(checkModule);
         document.getElementById('loader').style.display = 'none';
         document.getElementById('addBtn').disabled = false;
@@ -150,7 +182,7 @@ var checkModule = setInterval(()=>{
         document.getElementById('addBtn').onclick = addPoint;
         document.getElementById('resetBtn').onclick = resetScore;
     }
-}, 100);
+},100);
 </script>
 </body>
 </html>
